@@ -5,6 +5,7 @@
 #include <eosio/state_history/compression.hpp>
 #include <eosio/state_history/serialization.hpp>
 #include <eosio/state_history/trace_converter.hpp>
+#include <fc/static_variant.hpp>
 extern const char* const state_history_plugin_abi;
 
 namespace bio = boost::iostreams;
@@ -63,10 +64,10 @@ std::vector<augmented_transaction_trace> prepare_traces(trace_converter&       c
       traces.push_back(*converter.onblock_trace);
    for (auto& r : block_state->block->transactions) {
       transaction_id_type id;
-      if (r.trx.contains<transaction_id_type>())
-         id = r.trx.get<transaction_id_type>();
+      if (fc::holds_alternative<transaction_id_type>(r.trx))
+         id = fc::get<transaction_id_type>(r.trx);
       else
-         id = r.trx.get<packed_transaction>().id();
+         id = fc::get<packed_transaction>(r.trx).id();
       auto it = converter.cached_traces.find(id);
       EOS_ASSERT(it != converter.cached_traces.end() && it->second.trace->receipt, state_history_exception,
                  "missing trace for transaction ${id}", ("id", id));
@@ -99,13 +100,20 @@ void for_each_packed_transaction(const std::vector<eosio::state_history::augment
 }
 
 prunable_data_type prune(const prunable_data_type& obj) {
-   return obj.prunable_data.visit(
+   return fc::visit(
        chain::overloaded{[](const prunable_data_type::none& elem) -> prunable_data_type { return {elem}; },
                          [&obj](const auto& elem) -> prunable_data_type {
                             if (elem.signatures.empty() && elem.context_free_segments.empty())
                                return {elem};
                             return obj.prune_all();
-                         }});
+                         }}, obj.prunable_data);  
+  //  return obj.prunable_data.visit(
+  //      chain::overloaded{[](const prunable_data_type::none& elem) -> prunable_data_type { return {elem}; },
+  //                        [&obj](const auto& elem) -> prunable_data_type {
+  //                           if (elem.signatures.empty() && elem.context_free_segments.empty())
+  //                              return {elem};
+  //                           return obj.prune_all();
+  //                        }});
 }
 
 BOOST_DECLARE_HAS_MEMBER(has_context_free_segments, context_free_segments);
@@ -134,13 +142,17 @@ void pack(Buffer& buffer, const T& obj) {
 }
 
 void pack(bytes& buffer, const prunable_data_type& obj) {
-   buffer.push_back(obj.prunable_data.which());
-   obj.prunable_data.visit([&buffer](const auto& obj) { pack(buffer, obj); });
+  //  buffer.push_back(obj.prunable_data.which());
+  //  obj.prunable_data.visit([&buffer](const auto& obj) { pack(buffer, obj); });
+  buffer.push_back(obj.prunable_data.index());
+  fc::visit([&buffer](const auto& obj) { pack(buffer, obj); }, obj.prunable_data);
 }
 
 void pack(fc::datastream<char*>& ds, const prunable_data_type& obj) {
-   fc::raw::pack(ds, static_cast<uint8_t>(obj.prunable_data.which()));
-   obj.prunable_data.visit([&ds](const auto& obj) { pack(ds, obj); });
+  //  fc::raw::pack(ds, static_cast<uint8_t>(obj.prunable_data.which()));
+  //  obj.prunable_data.visit([&ds](const auto& obj) { pack(ds, obj); });
+  fc::raw::pack(ds, static_cast<uint8_t>(obj.prunable_data.index()));
+  fc::visit([&ds](const auto& obj) { pack(ds, obj); }, obj.prunable_data);
 }
 
 template <typename T, std::enable_if_t<!has_context_free_segments<T>::value, int> = 0>
@@ -157,15 +169,16 @@ void unpack(const char* read_buffer, fc::datastream<const char*>& ds, T& t) {
 void unpack(const char* read_buffer, fc::datastream<const char*>& ds, prunable_data_type& prunable) {
    uint8_t tag;
    fc::raw::unpack(ds, tag);
-   prunable.prunable_data.set_which(tag);
-   prunable.prunable_data.visit([read_buffer, &ds](auto& v) { unpack(read_buffer, ds, v); });
+    fc::from_index(prunable.prunable_data, tag);
+  //  prunable.prunable_data.visit([read_buffer, &ds](auto& v) { unpack(read_buffer, ds, v); });
+   fc::visit([read_buffer, &ds](auto& v) { unpack(read_buffer, ds, v); }, prunable.prunable_data);
 }
 
 /// used to traverse each trace along with its associated unpacked prunable_data
 template <typename Visitor>
 void visit_deserialized_trace(const char* read_buffer, fc::datastream<const char*>& ds, transaction_trace& trace,
                               Visitor&& visitor) {
-   auto& trace_v0 = trace.get<transaction_trace_v0>();
+   auto& trace_v0 = fc::get<transaction_trace_v0>(trace);
    if (trace_v0.failed_dtrx_trace.size()) {
       // failed_dtrx_trace have at most one element because it is encoded as an optional
       visit_deserialized_trace(read_buffer, ds, trace_v0.failed_dtrx_trace[0].recurse, std::forward<Visitor>(visitor));
@@ -278,8 +291,9 @@ bytes trace_converter::to_traces_bin_v0(const bytes& entry_payload, uint32_t ver
       for (auto& trace : traces) {
          visit_deserialized_trace(entry_payload.data(), strm, trace,
                                   [](transaction_trace_v0& trace, prunable_data_type& prunable_data) {
-                                     auto& ptrx = trace.partial->get<partial_transaction_v0>();
-                                     prunable_data.prunable_data.visit(restore_partial{ptrx});
+                                     auto& ptrx = fc::get<partial_transaction_v0>(*trace.partial);
+                                     fc::visit(restore_partial{ptrx}, prunable_data.prunable_data);
+                                    //  prunable_data.prunable_data.visit(restore_partial{ptrx});
                                   });
       }
 

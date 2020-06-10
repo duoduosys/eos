@@ -117,7 +117,7 @@ namespace eosio { namespace testing {
       ( builtin_protocol_feature_t codename ) -> digest_type {
          auto res = visited_builtins.emplace( codename, optional<digest_type>() );
          if( !res.second ) {
-            EOS_ASSERT( res.first->second, protocol_feature_exception,
+            EOS_ASSERT( res.first->second.has_value(), protocol_feature_exception,
                         "invariant failure: cycle found in builtin protocol feature dependencies"
             );
             return *res.first->second;
@@ -194,7 +194,7 @@ namespace eosio { namespace testing {
 
       auto schedule_preactivate_protocol_feature = [&]() {
          auto preactivate_feature_digest = pfm.get_builtin_digest(builtin_protocol_feature_t::preactivate_feature);
-         FC_ASSERT( preactivate_feature_digest, "PREACTIVATE_FEATURE not found" );
+         FC_ASSERT( preactivate_feature_digest.has_value(), "PREACTIVATE_FEATURE not found" );
          schedule_protocol_features_wo_preactivation( { *preactivate_feature_digest } );
       };
 
@@ -270,9 +270,9 @@ namespace eosio { namespace testing {
    }
 
    void base_tester::open( protocol_feature_set&& pfs, fc::optional<chain_id_type> expected_chain_id, const std::function<void()>& lambda ) {
-      if( !expected_chain_id ) {
+      if( !expected_chain_id.has_value() ) {
          expected_chain_id = controller::extract_chain_id_from_db( cfg.state_dir );
-         if( !expected_chain_id ) {
+         if( !expected_chain_id.has_value() ) {
             if( fc::is_regular_file( cfg.blocks_dir / "blocks.log" ) ) {
                expected_chain_id = block_log::extract_chain_id( cfg.blocks_dir );
             } else {
@@ -287,13 +287,13 @@ namespace eosio { namespace testing {
       chain_transactions.clear();
       control->accepted_block.connect([this]( const block_state_ptr& block_state ){
         FC_ASSERT( block_state->block );
-          for( const auto& receipt : block_state->block->transactions ) {
-              if( receipt.trx.contains<packed_transaction>() ) {
-                  auto &pt = receipt.trx.get<packed_transaction>();
-                  chain_transactions[pt.get_transaction().id()] = receipt;
+          for( auto receipt : block_state->block->transactions ) {
+              if( fc::holds_alternative<packed_transaction>(receipt.trx) ) {
+                  auto &pt = fc::get<packed_transaction>(receipt.trx);
+                  chain_transactions[pt.get_transaction().id()] = std::move(receipt);
               } else {
-                  auto& id = receipt.trx.get<transaction_id_type>();
-                  chain_transactions[id] = receipt;
+                  auto& id = fc::get<transaction_id_type>(receipt.trx);
+                  chain_transactions[id] = std::move(receipt);
               }
           }
       });
@@ -1108,9 +1108,12 @@ namespace eosio { namespace testing {
       vector<legacy::producer_key> legacy_keys;
       legacy_keys.reserve(schedule.size());
       for (const auto &p : schedule) {
-         p.authority.visit([&legacy_keys, &p](const auto& auth){
+         fc::visit([&legacy_keys, &p](const auto& auth){
             legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
-         });
+         }, p.authority);
+        //  p.authority.visit([&legacy_keys, &p](const auto& auth){
+        //     legacy_keys.emplace_back(legacy::producer_key{p.producer_name, auth.keys.front().key});
+        //  });
       }
 
       return push_action( config::system_account_name, N(setprods), config::system_account_name,
@@ -1166,7 +1169,7 @@ namespace eosio { namespace testing {
       [&pfm, &pfs, current_block_num, current_block_time, &preactivation_set, &preactivations, &add_digests]
       ( const digest_type& feature_digest ) {
          const auto& pf = pfs.get_protocol_feature( feature_digest );
-         FC_ASSERT( pf.builtin_feature, "called add_digests on a non-builtin protocol feature" );
+         FC_ASSERT( pf.builtin_feature.has_value(), "called add_digests on a non-builtin protocol feature" );
          if( !pf.enabled || pf.earliest_allowed_activation_time > current_block_time
              || pfm.is_builtin_activated( *pf.builtin_feature, current_block_num ) ) return;
 
@@ -1182,7 +1185,7 @@ namespace eosio { namespace testing {
 
       for( const auto& f : builtin_protocol_feature_codenames ) {
          auto digest = pfs.get_builtin_digest( f.first );
-         if( !digest ) continue;
+         if( !digest.has_value() ) continue;
          add_digests( *digest );
       }
 

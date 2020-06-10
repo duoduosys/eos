@@ -71,11 +71,11 @@ using block_info = std::variant<block_info_v0>;
 // todo: move out of "state"?
 struct block_info_kv : eosio::kv_table<block_info> {
    index<uint32_t> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                                    return std::visit([](const auto& obj) { return obj.num; }, *var);
+                                    return visit([](const auto& obj) { return obj.num; }, *var);
                                  } };
 
    index<eosio::checksum256> id_index{ eosio::name{ "id" }, [](const auto& var) {
-                                         return std::visit([](const auto& obj) { return obj.id; }, *var);
+                                         return visit([](const auto& obj) { return obj.id; }, *var);
                                       } };
 
    block_info_kv(eosio::kv_environment environment) : eosio::kv_table<block_info>{ std::move(environment) } {
@@ -94,7 +94,7 @@ struct global_property_kv : eosio::kv_table<global_property> {
 
 struct account_kv : eosio::kv_table<account> {
    index<eosio::name> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                                       return std::visit([](const auto& obj) { return obj.name; }, *var);
+                                       return visit([](const auto& obj) { return obj.name; }, *var);
                                     } };
 
    account_kv(eosio::kv_environment environment) : eosio::kv_table<account>{ std::move(environment) } {
@@ -104,7 +104,7 @@ struct account_kv : eosio::kv_table<account> {
 
 struct account_metadata_kv : eosio::kv_table<account_metadata> {
    index<eosio::name> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                                       return std::visit([](const auto& obj) { return obj.name; }, *var);
+                                       return visit([](const auto& obj) { return obj.name; }, *var);
                                     } };
 
    account_metadata_kv(eosio::kv_environment environment)
@@ -117,7 +117,7 @@ struct code_kv : eosio::kv_table<code> {
    index<std::tuple<const uint8_t&, const uint8_t&, const eosio::checksum256&>> primary_index{
       eosio::name{ "primary" },
       [](const auto& var) {
-         return std::visit([](const auto& obj) { return std::tie(obj.vm_type, obj.vm_version, obj.code_hash); }, *var);
+         return visit([](const auto& obj) { return std::tie(obj.vm_type, obj.vm_version, obj.code_hash); }, *var);
       }
    };
 
@@ -130,7 +130,7 @@ struct contract_table_kv : eosio::kv_table<contract_table> {
    index<std::tuple<const eosio::name&, const eosio::name&, const eosio::name&>> primary_index{
       eosio::name{ "primary" },
       [](const auto& var) {
-         return std::visit([](const auto& obj) { return std::tie(obj.code, obj.table, obj.scope); }, *var);
+         return visit([](const auto& obj) { return std::tie(obj.code, obj.table, obj.scope); }, *var);
       }
    };
 
@@ -142,7 +142,7 @@ struct contract_table_kv : eosio::kv_table<contract_table> {
 struct contract_row_kv : eosio::kv_table<contract_row> {
    using PT = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const uint64_t&>;
    index<PT> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                              return std::visit(
+                              return visit(
                                     [](const auto& obj) {
                                        return std::tie(obj.code, obj.table, obj.scope, obj.primary_key);
                                     },
@@ -157,7 +157,7 @@ struct contract_row_kv : eosio::kv_table<contract_row> {
 struct contract_index64_kv : eosio::kv_table<contract_index64> {
    using PT = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const uint64_t&>;
    index<PT> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                              return std::visit(
+                              return visit(
                                     [](const auto& obj) {
                                        return std::tie(obj.code, obj.table, obj.scope, obj.primary_key);
                                     },
@@ -166,7 +166,7 @@ struct contract_index64_kv : eosio::kv_table<contract_index64> {
    using ST = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const uint64_t&,
                                   const uint64_t&>;
    index<ST> secondary_index{ eosio::name{ "secondary" }, [](const auto& var) {
-                                return std::visit(
+                                return visit(
                                       [](const auto& obj) {
                                          return std::tie(obj.code, obj.table, obj.scope, obj.secondary_key,
                                                          obj.primary_key);
@@ -183,7 +183,7 @@ struct contract_index64_kv : eosio::kv_table<contract_index64> {
 struct contract_index128_kv : eosio::kv_table<contract_index128> {
    using PT = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const uint64_t&>;
    index<PT> primary_index{ eosio::name{ "primary" }, [](const auto& var) {
-                              return std::visit(
+                              return visit(
                                     [](const auto& obj) {
                                        return std::tie(obj.code, obj.table, obj.scope, obj.primary_key);
                                     },
@@ -192,7 +192,7 @@ struct contract_index128_kv : eosio::kv_table<contract_index128> {
    using ST = typename std::tuple<const eosio::name&, const eosio::name&, const eosio::name&, const __uint128_t&,
                                   const uint64_t&>;
    index<ST> secondary_index{ eosio::name{ "secondary" }, [](const auto& var) {
-                                return std::visit(
+                                return visit(
                                       [](const auto& obj) {
                                          return std::tie(obj.code, obj.table, obj.scope, obj.secondary_key,
                                                          obj.primary_key);

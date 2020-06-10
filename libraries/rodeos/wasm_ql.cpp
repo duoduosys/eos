@@ -271,7 +271,7 @@ void run_action(wasm_ql::thread_state& thread_state, const std::vector<char>& co
    thread_state.receiver         = action.account;
    thread_state.action_data      = action.data;
    thread_state.action_return_value.clear();
-   std::visit([&](auto& stat) { thread_state.block_num = stat.head; }, fill_status);
+   visit([&](auto& stat) { thread_state.block_num = stat.head; }, fill_status);
    thread_state.block_info.reset();
 
    chaindb_state chaindb_state;
@@ -319,7 +319,7 @@ const std::vector<char>& query_get_info(wasm_ql::thread_state&   thread_state,
    {
       fill_status_sing sing{ state_account, db_view_state, false };
       if (sing.exists()) {
-         std::visit(
+         visit(
                [&](auto& obj) {
                   result += ",\"head_block_num\":\"" + std::to_string(obj.head) + "\"";
                   result += ",\"head_block_id\":" + eosio::convert_to_json(obj.head_id);

@@ -415,7 +415,7 @@ namespace impl {
          auto h = ctx.enter_scope();
          mutable_variant_object obj_mvo;
          add_static_variant<Resolver> adder(obj_mvo, resolver, ctx);
-         v.visit(adder);
+        fc::visit(adder, v);
          mvo(name, std::move(obj_mvo["_"]));
       }
 
@@ -440,7 +440,7 @@ namespace impl {
 
          try {
             auto abi = resolver(act.account);
-            if (abi.valid()) {
+            if (abi.has_value()) {
                auto type = abi->get_action_type(act.name);
                if (!type.empty()) {
                   try {
@@ -502,15 +502,15 @@ namespace impl {
          const auto& trx = ptrx.get_transaction();
          mvo("id", trx.id());
          const auto* sigs = ptrx.get_signatures();
-         if( ptrx.get_prunable_data().prunable_data.contains<packed_transaction::prunable_data_type::full_legacy>() ) {
-            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
+         if( fc::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(ptrx.get_prunable_data().prunable_data) ) {
+            const auto& legacy = fc::get<packed_transaction::prunable_data_type::full_legacy>(ptrx.get_prunable_data().prunable_data);
             mvo("signatures", legacy.signatures );
          } else {
             mvo("signatures", vector<signature_type>());
          }
          mvo("compression", ptrx.get_compression());
-         if( ptrx.get_prunable_data().prunable_data.contains<packed_transaction::prunable_data_type::full_legacy>() ) {
-            const auto& legacy = ptrx.get_prunable_data().prunable_data.get<packed_transaction::prunable_data_type::full_legacy>();
+         if( fc::holds_alternative<packed_transaction::prunable_data_type::full_legacy>(ptrx.get_prunable_data().prunable_data) ) {
+            const auto& legacy = fc::get<packed_transaction::prunable_data_type::full_legacy>(ptrx.get_prunable_data().prunable_data);
             mvo("packed_context_free_data", legacy.packed_context_free_data);
             mvo("context_free_data", legacy.context_free_segments);
          } else {
@@ -545,7 +545,7 @@ namespace impl {
          // process contents of block.transaction_extensions
          auto exts = trx.validate_and_extract_extensions();
          if (exts.count(deferred_transaction_generation_context::extension_id()) > 0) {
-            const auto& deferred_transaction_generation = exts.lower_bound(deferred_transaction_generation_context::extension_id())->second.get<deferred_transaction_generation_context>();
+            const auto& deferred_transaction_generation = fc::get<deferred_transaction_generation_context>(exts.lower_bound(deferred_transaction_generation_context::extension_id())->second);
             mvo("deferred_transaction_generation", deferred_transaction_generation);
          }
 
@@ -571,7 +571,7 @@ namespace impl {
          flat_multimap<uint16_t, block_header_extension> header_exts = block.validate_and_extract_header_extensions();
          if ( header_exts.count(protocol_feature_activation::extension_id() > 0) ) {
             const auto& new_protocol_features =
-                  header_exts.lower_bound(protocol_feature_activation::extension_id())->second.template get<protocol_feature_activation>().protocol_features;
+                  fc::get<protocol_feature_activation>(header_exts.lower_bound(protocol_feature_activation::extension_id())->second).protocol_features;
             vector<variant> pf_array;
             pf_array.reserve(new_protocol_features.size());
             for (auto feature : new_protocol_features) {
@@ -583,7 +583,7 @@ namespace impl {
          }
          if ( header_exts.count(producer_schedule_change_extension::extension_id())) {
             const auto& new_producer_schedule =
-                  header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second.template get<producer_schedule_change_extension>();
+                  fc::get<producer_schedule_change_extension>(header_exts.lower_bound(producer_schedule_change_extension::extension_id())->second);
             mvo("new_producer_schedule", new_producer_schedule);
          }
 
@@ -594,7 +594,7 @@ namespace impl {
          auto block_exts = block.validate_and_extract_extensions();
          if ( block_exts.count(additional_block_signatures_extension::extension_id()) > 0) {
             const auto& additional_signatures =
-                  block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second.template get<additional_block_signatures_extension>();
+                  fc::get<additional_block_signatures_extension>(block_exts.lower_bound(additional_block_signatures_extension::extension_id())->second);
             mvo("additional_signatures", additional_signatures);
          }
 
@@ -758,7 +758,7 @@ namespace impl {
                valid_empty_data = act.data.empty();
             } else if ( data.is_object() ) {
                auto abi = resolver(act.account);
-               if (abi.valid()) {
+               if (abi.has_value()) {
                   auto type = abi->get_action_type(act.name);
                   if (!type.empty()) {
                      variant_to_binary_context _ctx(*abi, ctx, type);

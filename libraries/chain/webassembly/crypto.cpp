@@ -14,7 +14,6 @@ namespace eosio { namespace chain { namespace webassembly {
 
       fc::raw::unpack( ds, s );
       fc::raw::unpack( pubds, p );
-
       EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
         "Unactivated signature type used during assert_recover_key");
       EOS_ASSERT(p.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_key_type,
@@ -34,7 +33,6 @@ namespace eosio { namespace chain { namespace webassembly {
       fc::crypto::signature s;
       datastream<const char*> ds( sig.data(), sig.size() );
       fc::raw::unpack(ds, s);
-
       EOS_ASSERT(s.which() < context.db.get<protocol_state_object>().num_supported_key_types, unactivated_signature_type,
                  "Unactivated signature type used during recover_key");
 

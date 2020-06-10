@@ -1044,14 +1044,15 @@ BOOST_AUTO_TEST_CASE(pruned_block_test) {
    BOOST_TEST(in.tellp() <= buffer.size());
    BOOST_TEST(deserialized.transaction_mroot.str() == original->transaction_mroot.str());
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
-   deserialized.transactions.back().trx.get<packed_transaction>().prune_all();
+  //  deserialized.transactions.back().trx.get<packed_transaction>().prune_all();
+   fc::get<packed_transaction>(deserialized.transactions.back().trx).prune_all();
    deserialized.prune_state = signed_block::prune_state_type::incomplete;
    BOOST_TEST(deserialized.transaction_mroot.str() == calculate_trx_merkle(deserialized.transactions).str());
    fc::datastream<char*> out(buffer.data(), buffer.size());
    deserialized.pack(out, packed_transaction::cf_compression_type::none);
    BOOST_TEST(out.tellp() <= buffer.size());
 
-   BOOST_TEST(!deserialized.to_signed_block_v0());
+   BOOST_TEST(!deserialized.to_signed_block_v0().has_value());
 }
 
 BOOST_AUTO_TEST_CASE(reflector_init_test) {

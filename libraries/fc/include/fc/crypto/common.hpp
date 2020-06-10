@@ -92,7 +92,7 @@ namespace fc { namespace crypto {
       template< typename KeyType >
       std::string operator()( const KeyType& key ) const {
          using data_type = typename KeyType::data_type;
-         constexpr int position = Storage::template position<KeyType>();
+         constexpr int position = fc::get_index<Storage, KeyType>(); //Storage::template position<KeyType>();
          constexpr bool is_default = position == DefaultPosition;
 
          checksummed_data<data_type> wrapper;
@@ -130,7 +130,8 @@ namespace fc { namespace crypto {
 
          template<typename KeyType>
          bool operator()(const KeyType &a) const {
-            const auto &b = _b.template get<KeyType>();
+            // const auto &b = _b.template get<KeyType>();
+            const auto &b = fc::template get<KeyType>(_b);
             return eq_comparator<KeyType>::apply(a,b);
          }
 
@@ -138,7 +139,7 @@ namespace fc { namespace crypto {
       };
 
       static bool apply(const variant_type& a, const variant_type& b) {
-         return a.which() == b.which() && a.visit(visitor(b));
+        return a.index() == b.index() && fc::visit(visitor(b), a);
       }
    };
 
@@ -158,7 +159,8 @@ namespace fc { namespace crypto {
 
          template<typename KeyType>
          bool operator()(const KeyType &a) const {
-            const auto &b = _b.template get<KeyType>();
+            // const auto &b = _b.template get<KeyType>();
+            const auto &b = fc::template get<KeyType>(_b);
             return less_comparator<KeyType>::apply(a,b);
          }
 
@@ -166,7 +168,7 @@ namespace fc { namespace crypto {
       };
 
       static bool apply(const variant_type& a, const variant_type& b) {
-         return a.which() < b.which() || (a.which() == b.which() && a.visit(visitor(b)));
+        return a.index() < b.index() || (a.index() == b.index() && fc::visit(visitor(b), a));
       }
    };
 

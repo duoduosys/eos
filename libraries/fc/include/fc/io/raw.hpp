@@ -10,6 +10,7 @@
 #include <fc/filesystem.hpp>
 #include <fc/exception/exception.hpp>
 #include <fc/safe.hpp>
+#include <fc/static_variant.hpp>
 #include <fc/io/raw_fwd.hpp>
 #include <array>
 #include <map>
@@ -268,8 +269,8 @@ namespace fc {
     // optional
     template<typename Stream, typename T>
     void pack( Stream& s, const fc::optional<T>& v ) {
-      fc::raw::pack( s, bool(!!v) );
-      if( !!v ) fc::raw::pack( s, *v );
+      fc::raw::pack( s, bool(!v.has_value()) );
+      if( !v.has_value() ) fc::raw::pack( s, *v );
     }
 
     template<typename Stream, typename T>
@@ -748,16 +749,16 @@ namespace fc {
     template<typename Stream, typename... T>
     void pack( Stream& s, const static_variant<T...>& sv )
     {
-       fc::raw::pack( s, unsigned_int(sv.which()) );
-       sv.visit( pack_static_variant<Stream>(s) );
+      fc::raw::pack( s, unsigned_int(sv.index()) );
+      fc::visit( pack_static_variant<Stream>(s), sv );
     }
 
     template<typename Stream, typename... T> void unpack( Stream& s, static_variant<T...>& sv )
     {
        unsigned_int w;
        fc::raw::unpack( s, w );
-       sv.set_which(w.value);
-       sv.visit( unpack_static_variant<Stream>(s) );
+       fc::from_index(sv, w.value);
+       fc::visit( unpack_static_variant<Stream>(s), sv );
     }
 
 

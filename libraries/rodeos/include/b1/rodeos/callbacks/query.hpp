@@ -28,7 +28,7 @@ struct query_callbacks {
 
    int64_t current_time() {
       load_block_info();
-      return std::visit(
+      return visit(
             [](auto& b) { //
                return b.timestamp.to_time_point().time_since_epoch().count();
             },

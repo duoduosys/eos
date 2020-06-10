@@ -15,7 +15,101 @@
 #include <fc/exception/exception.hpp>
 #include <boost/core/typeinfo.hpp>
 
+//#define STD_VARIANT
+
+#include <variant>
+
 namespace fc {
+
+#ifdef STD_VARIANT
+
+// This will go away.
+template<typename Result>
+struct visitor {};
+
+template <typename... Types>
+using static_variant = std::variant<Types...>;
+
+using std::get;
+using std::holds_alternative;
+using std::visit;
+
+template <typename variant, int I = 0>
+void from_index(variant& v, int index) 
+{
+  if constexpr(I >= std::variant_size_v<variant>)
+  {
+    throw std::runtime_error{"Variant index " + std::to_string(I + index) + " out of bounds"};
+  }
+  else if (index == 0)
+  {
+     auto value = variant(std::in_place_index<I>);
+     v = std::move(value); 
+  }
+  else
+  {
+     from_index<variant, I + 1>(v, index - 1);
+  }
+}
+
+template<typename VariantType, typename T, std::size_t index = 0>
+constexpr std::size_t get_index() 
+{
+  if constexpr (index == std::variant_size_v<VariantType>) 
+  {
+    return index;
+  } 
+  else if constexpr (std::is_same_v<std::variant_alternative_t<index, VariantType>, T>) 
+  {
+    return index;
+  } 
+  else 
+  {
+    return get_index<VariantType, T, index + 1>();
+  }
+} 
+
+struct from_static_variant
+{
+  variant& var;
+  from_static_variant( variant& dv ):var(dv){}
+
+  template<typename T> void operator()( const T& v )const
+  {
+      to_variant( v, var );
+  }
+};
+
+struct to_static_variant
+{
+  const variant& var;
+  to_static_variant( const variant& dv ):var(dv){}
+
+  template<typename T> void operator()( T& v )const
+  {
+      from_variant( var, v );
+  }
+};
+
+template<typename... T> void to_variant( const fc::static_variant<T...>& s, fc::variant& v )
+{
+  variant tmp;
+  variants vars(2);
+  vars[0] = s.index();
+  visit( from_static_variant(vars[1]), s );
+  v = std::move(vars);
+}
+template<typename... T> void from_variant( const fc::variant& v, fc::static_variant<T...>& s )
+{
+  auto ar = v.get_array();
+  if( ar.size() < 2 ) return;
+  from_index(s, ar[0].as_uint64());
+  visit( to_static_variant(ar[1]), s );
+}
+
+template<typename... T> struct get_typename { static const char* name()   { return BOOST_CORE_TYPEID(static_variant<T...>).name();   } };
+
+#else
 
 // Implementation details, the user should not import this:
 namespace impl {
@@ -349,6 +443,12 @@ public:
         init(std::forward<X>(v));
     }
 
+    template <typename X>
+    static_variant(std::in_place_type_t<X>, X&& x)
+    : static_variant{std::forward<X>(x)}
+    {
+    }
+
    ~static_variant() {
        impl::storage_ops<void, 0, Types...>::del(_tag, storage);
     }
@@ -542,6 +642,12 @@ public:
     }
 
     int which() const {return _tag;}
+    int index() const {return _tag;}
+
+    constexpr bool valueless_by_exception() const noexcept
+    {
+      return false;
+    }
 
     template<typename X>
     bool contains() const { return which() == tag<X>::value; }
@@ -597,4 +703,48 @@ struct visitor {
    }
 
   template<typename... T> struct get_typename { static const char* name()   { return BOOST_CORE_TYPEID(static_variant<T...>).name();   } };
+
+template <typename variant, int I = 0>
+void from_index(variant& v, int index) 
+{
+  v.set_which(index);
+}
+
+template<typename VariantType, typename T, std::size_t index = 0>
+constexpr std::size_t get_index() 
+{
+  return VariantType::template position<T>();
+} 
+
+template<class T, class... Types>
+constexpr bool holds_alternative(const fc::static_variant<Types...>& v) noexcept
+{
+  return v.template contains<T>();
+}
+
+template <typename T, typename... Types>
+constexpr const T& get(const fc::static_variant<Types...>& v)
+{
+  return v.template get<T>();
+}
+
+template <typename T, typename... Types>
+constexpr T& get(fc::static_variant<Types...>& v)
+{
+  return v.template get<T>();
+}
+
+template <typename Visitor, typename... T>
+constexpr decltype(auto) visit(Visitor&& v, const fc::static_variant<T...>& variant)
+{
+  return variant.visit(v);
+}
+
+template <typename Visitor, typename... T>
+constexpr decltype(auto) visit(Visitor&& v, fc::static_variant<T...>& variant)
+{
+  return variant.visit(v);
+}
+
+#endif
 } // namespace fc

@@ -89,10 +89,10 @@ private:
             traces.emplace_back( to_transaction_trace_v1( *onblock_trace ));
          for( const auto& r : block_state->block->transactions ) {
             transaction_id_type id;
-            if( r.trx.contains<transaction_id_type>()) {
-               id = r.trx.get<transaction_id_type>();
+            if( fc::holds_alternative<transaction_id_type>(r.trx)) {
+               id = fc::get<transaction_id_type>(r.trx);
             } else {
-               id = r.trx.get<packed_transaction>().id();
+               id = fc::get<packed_transaction>(r.trx).id();
             }
             const auto it = cached_traces.find( id );
             if( it != cached_traces.end() ) {

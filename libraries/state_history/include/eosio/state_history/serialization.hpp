@@ -111,7 +111,7 @@ void history_pack_big_bytes(datastream<ST>& ds, const eosio::chain::bytes& v) {
 
 template <typename ST>
 void history_pack_big_bytes(datastream<ST>& ds, const fc::optional<eosio::chain::bytes>& v) {
-   fc::raw::pack(ds, v.valid());
+   fc::raw::pack(ds, v.has_value());
    if (v)
       history_pack_big_bytes(ds, *v);
 }
@@ -570,7 +570,7 @@ datastream<ST>& operator<<(datastream<ST>& ds, const history_serial_wrapper<eosi
 inline fc::optional<uint64_t> cap_error_code(const fc::optional<uint64_t>& error_code) {
    fc::optional<uint64_t> result;
 
-   if (!error_code)
+   if (!error_code.has_value())
       return result;
 
    const uint64_t upper_limit = static_cast<uint64_t>(eosio::chain::system_error_code::generic_system_error);

@@ -207,16 +207,16 @@ BOOST_AUTO_TEST_SUITE(static_variant_test_suite)
       var_type string_lvalue = string("abcd");
       const var_type string_const_value = string("abcd");
 
-      BOOST_CHECK(string_lvalue.visit(visitor) == selected_op::STRING_LVALUE_REF);
-      BOOST_CHECK(var_type(string("abcd")).visit(visitor) == selected_op::STRING_RVALUE_REF);
-      BOOST_CHECK(string_const_value.visit(visitor) == selected_op::STRING_CONST_REF);
+      BOOST_CHECK(fc::visit(visitor, string_lvalue) == selected_op::STRING_LVALUE_REF);
+      BOOST_CHECK(fc::visit(visitor, var_type(string("abcd"))) == selected_op::STRING_RVALUE_REF);
+      BOOST_CHECK(fc::visit(visitor, string_const_value) == selected_op::STRING_CONST_REF);
 
       var_type vector_lvalue = std::vector<char>{};
       const var_type vector_const_value = std::vector<char>{};
 
-      BOOST_CHECK(vector_lvalue.visit(visitor) == selected_op::VECTOR_LVALUE_REF);
-      BOOST_CHECK(var_type(std::vector<char>{}).visit(visitor) == selected_op::VECTOR_LVALUE_REF);
-      BOOST_CHECK(vector_const_value.visit(visitor) == selected_op::VECTOR_CONST_REF);
+      BOOST_CHECK(fc::visit(visitor, vector_lvalue) == selected_op::VECTOR_LVALUE_REF);
+      BOOST_CHECK(fc::visit(visitor, var_type(std::vector<char>{})) == selected_op::VECTOR_LVALUE_REF);
+      BOOST_CHECK(fc::visit(visitor, vector_const_value) == selected_op::VECTOR_CONST_REF);
    }
 
    BOOST_AUTO_TEST_CASE(test_get) {
@@ -226,9 +226,10 @@ BOOST_AUTO_TEST_SUITE(static_variant_test_suite)
       var_type lvalue(string("abc"));
       const var_type const_value(string("abc"));
 
-      BOOST_CHECK(visitor(lvalue.get<string>()) == selected_op::STRING_LVALUE_REF);
-      BOOST_CHECK(visitor(const_value.get<string>()) == selected_op::STRING_CONST_REF);
-      BOOST_CHECK(visitor(var_type(string("abc")).get<string>()) == selected_op::STRING_RVALUE_REF);
+      BOOST_CHECK(visitor(fc::get<string>(lvalue)) == selected_op::STRING_LVALUE_REF);
+      BOOST_CHECK(visitor(fc::get<string>(const_value)) == selected_op::STRING_CONST_REF);
+      BOOST_CHECK(visitor(fc::get<string>(var_type(string("abc")))) == selected_op::STRING_RVALUE_REF);
+      
    }
 
 BOOST_AUTO_TEST_SUITE_END()

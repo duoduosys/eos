@@ -490,7 +490,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
 
          auto f = read_builtin_protocol_feature( file_path );
 
-         if( !f ) continue;
+         if( !f.has_value() ) continue;
 
          auto res = found_builtin_protocol_features.emplace( f->get_codename(), file_path );
 
@@ -571,7 +571,7 @@ protocol_feature_set initialize_protocol_features( const fc::path& p, bool popul
    ( builtin_protocol_feature_t codename ) -> digest_type {
       auto res = visited_builtins.emplace( codename, optional<digest_type>() );
       if( !res.second ) {
-         EOS_ASSERT( res.first->second, protocol_feature_exception,
+         EOS_ASSERT( res.first->second.has_value(), protocol_feature_exception,
                      "invariant failure: cycle found in builtin protocol feature dependencies"
          );
          return *res.first->second;
@@ -787,7 +787,7 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
 
          if( fc::exists( my->blocks_dir / "blocks.log" )) {
             gs = block_log::extract_genesis_state( my->blocks_dir );
-            EOS_ASSERT( gs,
+            EOS_ASSERT( gs.has_value(),
                         plugin_config_exception,
                         "Block log at '${path}' does not contain a genesis state, it only has the chain-id.",
                         ("path", (my->blocks_dir / "blocks.log").generic_string())
@@ -1019,14 +1019,14 @@ void chain_plugin::plugin_initialize(const variables_map& options) {
                         "--genesis-timestamp is only valid if also passed in with --genesis-json");
          }
 
-         if( !chain_id ) {
+         if( !chain_id.has_value() ) {
             if( my->genesis ) {
                // Uninitialized state database and genesis state extracted from block log
                chain_id = my->genesis->compute_chain_id();
             } else {
                // Uninitialized state database and no genesis state provided
 
-               EOS_ASSERT( !block_log_chain_id, plugin_config_exception,
+               EOS_ASSERT( !block_log_chain_id.has_value(), plugin_config_exception,
                            "Genesis state is necessary to initialize fresh blockchain state but genesis state could not be "
                            "found in the blocks log. Please either load from snapshot or find a blocks log that starts "
                            "from genesis."
@@ -1905,7 +1905,7 @@ vector<asset> read_only::get_currency_balance( const read_only::get_currency_bal
 
       EOS_ASSERT( cursor.get_symbol().valid(), chain::asset_type_exception, "Invalid asset");
 
-      if( !p.symbol || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
+      if( !p.symbol.has_value() || boost::iequals(cursor.symbol_name(), *p.symbol) ) {
         results.emplace_back(cursor);
       }
 
@@ -2017,8 +2017,8 @@ read_only::get_producers_result read_only::get_producers( const read_only::get_p
          ("total_votes", 0.0f);
 
       // detect a legacy key and maintain API compatibility for those entries
-      if (p.authority.contains<block_signing_authority_v0>()) {
-         const auto& auth = p.authority.get<block_signing_authority_v0>();
+      if (fc::holds_alternative<block_signing_authority_v0>(p.authority)) {
+         const auto& auth = fc::get<block_signing_authority_v0>(p.authority);
          if (auth.keys.size() == 1 && auth.keys.back().weight == auth.threshold) {
             row("producer_key", auth.keys.back().key);
          }
@@ -2150,7 +2150,7 @@ fc::variant read_only::get_block(const read_only::get_block_params& params) cons
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num.has_value() ) {
       block = db.fetch_block_by_number( *block_num );
    } else {
       try {
@@ -2211,7 +2211,7 @@ fc::variant read_only::get_block_header_state(const get_block_header_state_param
       block_num = fc::to_uint64(params.block_num_or_id);
    } catch( ... ) {}
 
-   if( block_num.valid() ) {
+   if( block_num.has_value() ) {
       b = db.fetch_block_state_by_number(*block_num);
    } else {
       try {
@@ -2249,10 +2249,10 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         if (result.contains<fc::exception_ptr>()) {
-            next(result.get<fc::exception_ptr>());
+         if (fc::holds_alternative<fc::exception_ptr>(result)) {
+            next(fc::get<fc::exception_ptr>(result));
          } else {
-            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+            auto trx_trace_ptr = fc::get<transaction_trace_ptr>(result);
 
             try {
                fc::variant output;
@@ -2323,11 +2323,11 @@ void read_write::push_transaction(const read_write::push_transaction_params& par
 
 static void push_recurse(read_write* rw, int index, const std::shared_ptr<read_write::push_transactions_params>& params, const std::shared_ptr<read_write::push_transactions_results>& results, const next_function<read_write::push_transactions_results>& next) {
    auto wrapped_next = [=](const fc::static_variant<fc::exception_ptr, read_write::push_transaction_results>& result) {
-      if (result.contains<fc::exception_ptr>()) {
-         const auto& e = result.get<fc::exception_ptr>();
+      if (fc::holds_alternative<fc::exception_ptr>(result)) {
+         const auto& e = fc::get<fc::exception_ptr>(result);
          results->emplace_back( read_write::push_transaction_results{ transaction_id_type(), fc::mutable_variant_object( "error", e->to_detail_string() ) } );
       } else {
-         const auto& r = result.get<read_write::push_transaction_results>();
+         const auto& r = fc::get<read_write::push_transaction_results>(result);
          results->emplace_back( r );
       }
 
@@ -2370,10 +2370,10 @@ void read_write::send_transaction(const read_write::send_transaction_params& par
 
       app().get_method<incoming::methods::transaction_async>()(input_trx, true,
             [this, next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& result) -> void {
-         if (result.contains<fc::exception_ptr>()) {
-            next(result.get<fc::exception_ptr>());
+         if (fc::holds_alternative<fc::exception_ptr>(result)) {
+            next(fc::get<fc::exception_ptr>(result));
          } else {
-            auto trx_trace_ptr = result.get<transaction_trace_ptr>();
+            auto trx_trace_ptr = fc::get<transaction_trace_ptr>(result);
 
             try {
                fc::variant output;
@@ -2470,7 +2470,7 @@ read_only::get_raw_abi_results read_only::get_raw_abi( const get_raw_abi_params&
    result.abi_hash = fc::sha256::hash( accnt_obj.abi.data(), accnt_obj.abi.size() );
    if( accnt_metadata_obj.code_hash != digest_type() )
       result.code_hash = accnt_metadata_obj.code_hash;
-   if( !params.abi_hash || *params.abi_hash != result.abi_hash )
+   if( !params.abi_hash.has_value() || *params.abi_hash != result.abi_hash )
       result.abi = blob{{accnt_obj.abi.begin(), accnt_obj.abi.end()}};
 
    return result;
@@ -2498,11 +2498,11 @@ read_only::get_account_results read_only::get_account( const get_account_params&
    uint32_t greylist_limit = db.is_resource_greylisted(result.account_name) ? 1 : config::maximum_elastic_resource_multiplier;
    const block_timestamp_type current_usage_time (db.head_block_time());
    result.net_limit.set( rm.get_account_net_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.net_limit.last_usage_update_time.valid() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.net_limit.last_usage_update_time.has_value() && (result.net_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.net_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.cpu_limit.set( rm.get_account_cpu_limit_ex( result.account_name, greylist_limit, current_usage_time).first );
-   if ( result.cpu_limit.last_usage_update_time.valid() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
+   if ( result.cpu_limit.last_usage_update_time.has_value() && (result.cpu_limit.last_usage_update_time->slot == 0) ) {   // account has no action yet
       result.cpu_limit.last_usage_update_time = accnt_obj.creation_date;
    }
    result.ram_usage = rm.get_account_ram_usage( result.account_name );
@@ -2536,7 +2536,7 @@ read_only::get_account_results read_only::get_account( const get_account_params&
 
       auto core_symbol = extract_core_symbol();
 
-      if (params.expected_core_symbol.valid())
+      if (params.expected_core_symbol.has_value())
          core_symbol = *(params.expected_core_symbol);
 
       const auto* t_id = d.find<chain::table_id_object, chain::by_code_scope_table>(boost::make_tuple( token_code, params.account_name, N(accounts) ));

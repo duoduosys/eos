@@ -113,7 +113,8 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
                    fc::datastream<const char*> ds(d, s);
                    state_request               req;
                    fc::raw::unpack(ds, req);
-                   req.visit(*self);
+                  //  req.visit(*self);
+                  visit(*self, req);
                    self->start_read();
                 });
              });
@@ -172,7 +173,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
             if (req.start_block_num <= cp.block_num)
                continue;
             auto id = plugin->get_block_id(cp.block_num);
-            if (!id || *id != cp.block_id)
+            if (!id.has_value() || *id != cp.block_id)
                req.start_block_num = std::min(req.start_block_num, cp.block_num);
          }
          req.have_positions.clear();
@@ -181,7 +182,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       }
 
       void operator()(get_blocks_ack_request_v0& req) {
-         if (!current_request)
+         if (!current_request.has_value())
             return;
          current_request->max_messages_in_flight += req.num_messages;
          send_update();
@@ -189,7 +190,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void send_update(get_blocks_result_v0 result) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !current_request.has_value() || !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();
          result.last_irreversible = {chain.last_irreversible_block_num(), chain.last_irreversible_block_id()};
@@ -222,7 +223,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
 
       void send_update(const block_state_ptr& block_state) {
          need_to_send_update = true;
-         if (!send_queue.empty() || !current_request || !current_request->max_messages_in_flight)
+         if (!send_queue.empty() || !current_request.has_value() || !current_request->max_messages_in_flight)
             return;
          get_blocks_result_v0 result;
          result.head = {block_state->block_num, block_state->id};
@@ -232,7 +233,7 @@ struct state_history_plugin_impl : std::enable_shared_from_this<state_history_pl
       void send_update(bool changed = false) {
          if (changed)
             need_to_send_update = true;
-         if (!send_queue.empty() || !need_to_send_update || !current_request ||
+         if (!send_queue.empty() || !need_to_send_update || !current_request.has_value() ||
              !current_request->max_messages_in_flight)
             return;
          auto& chain = plugin->chain_plug->chain();

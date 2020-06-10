@@ -36,26 +36,36 @@ namespace fc { namespace crypto {
    {}
 
    int signature::which() const {
-      return _storage.which();
+      // return _storage.which();
+      return _storage.index();
    }
 
    template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
    template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
    size_t signature::variable_size() const {
-      return _storage.visit<size_t>(overloaded {
+      return fc::visit(overloaded {
          [&](const auto& k1r1) {
-            return 0;
+            return static_cast<size_t>(0);
          },
          [&](const webauthn::signature& wa) {
-            return wa.variable_size();
+            return static_cast<size_t>(wa.variable_size());
          }
-      });
+      }, _storage);
+      // return _storage.visit<size_t>(overloaded {
+      //    [&](const auto& k1r1) {
+      //       return 0;
+      //    },
+      //    [&](const webauthn::signature& wa) {
+      //       return wa.variable_size();
+      //    }
+      // });
    }
 
    std::string signature::to_string(const fc::yield_function_t& yield) const
    {
-      auto data_str = _storage.visit(base58str_visitor<storage_type, config::signature_prefix>(yield));
+      // auto data_str = _storage.visit(base58str_visitor<storage_type, config::signature_prefix>(yield));
+      auto data_str = fc::visit(base58str_visitor<storage_type, config::signature_prefix>(yield), _storage);
       yield();
       return std::string(config::signature_base_prefix) + "_" + data_str;
    }
@@ -79,7 +89,8 @@ namespace fc { namespace crypto {
    }
 
    size_t hash_value(const signature& b) {
-       return b._storage.visit(hash_visitor());
+      //  return b._storage.visit(hash_visitor());
+      return fc::visit(hash_visitor(), b._storage);
    }
 } } // eosio::blockchain
 

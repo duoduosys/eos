@@ -17,7 +17,16 @@ namespace fc {
    class variant;
    class variant_object;
    class path;
-   template<typename... Types> class static_variant;
+   
+   //#define STD_VARIANT
+   #ifdef STD_VARIANT
+   #include <variant>
+   template <typename... Types>
+   using static_variant = std::variant<Types...>;
+   #else
+   template<typename... Types>
+   class static_variant;
+   #endif
 
    template<typename IntType, typename EnumType> class enum_type;
    namespace ip { class endpoint; }

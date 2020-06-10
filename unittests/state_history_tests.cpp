@@ -21,16 +21,17 @@ state_history::partial_transaction_v0 get_partial_from_traces_bin(const bytes&  
    fc::raw::unpack(strm, traces);
 
    auto cfd_trace_itr = std::find_if(traces.begin(), traces.end(), [id](const state_history::transaction_trace& v) {
-      return v.get<state_history::transaction_trace_v0>().id == id;
+      // return v.get<state_history::transaction_trace_v0>().id == id;
+      return fc::get<state_history::transaction_trace_v0>(v).id == id;
    });
 
    // make sure the trace with cfd can be found
    BOOST_REQUIRE(cfd_trace_itr != traces.end());
-   BOOST_REQUIRE(cfd_trace_itr->contains<state_history::transaction_trace_v0>());
-   auto trace_v0 = cfd_trace_itr->get<state_history::transaction_trace_v0>();
-   BOOST_REQUIRE(trace_v0.partial);
-   BOOST_REQUIRE(trace_v0.partial->contains<state_history::partial_transaction_v0>());
-   return trace_v0.partial->get<state_history::partial_transaction_v0>();
+   BOOST_REQUIRE(fc::holds_alternative<state_history::transaction_trace_v0>(*cfd_trace_itr));
+   auto trace_v0 = fc::get<state_history::transaction_trace_v0>(*cfd_trace_itr);
+   BOOST_REQUIRE(trace_v0.partial.has_value());
+   BOOST_REQUIRE(fc::holds_alternative<state_history::partial_transaction_v0>(*trace_v0.partial));
+   return fc::get<state_history::partial_transaction_v0>(*trace_v0.partial);
 }
 
 BOOST_AUTO_TEST_SUITE(test_state_history)

@@ -60,7 +60,7 @@ namespace fc
            _path = fc::path( "/" ) / _lpath;
 #endif
            std::getline( ss, _largs );
-           if( _args.valid() && _args->size() ) 
+           if( _args.has_value() && _args->size() ) 
            {
              // TODO: args = fc::move(_args);
               _query = fc::move(_largs);
@@ -91,17 +91,17 @@ namespace fc
   {
       std::stringstream ss;
       ss<<my->_proto<<"://";
-      if( my->_user.valid() ) {
+      if( my->_user.has_value() ) {
         ss << *my->_user;
-        if( my->_pass.valid() ) {
+        if( my->_pass.has_value() ) {
           ss<<":"<<*my->_pass;
         }
         ss<<"@";
       }
-      if( my->_host.valid() ) ss<<*my->_host;
-      if( my->_port.valid() ) ss<<":"<<*my->_port;
-      if( my->_path.valid() ) ss<<my->_path->generic_string();
-      if( my->_query.valid() ) ss<<"?"<<*my->_query;
+      if( my->_host.has_value() ) ss<<*my->_host;
+      if( my->_port.has_value() ) ss<<":"<<*my->_port;
+      if( my->_path.has_value() ) ss<<my->_path->generic_string();
+      if( my->_query.has_value() ) ss<<"?"<<*my->_query;
     //  if( my->_args ) ss<<"?"<<*my->_args;
       return ss.str();
   }

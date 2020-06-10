@@ -439,18 +439,18 @@ class producer_plugin_impl : public std::enable_shared_from_this<producer_plugin
 
          auto send_response = [this, &trx, &chain, &next](const fc::static_variant<fc::exception_ptr, transaction_trace_ptr>& response) {
             next(response);
-            if (response.contains<fc::exception_ptr>()) {
-               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(response.get<fc::exception_ptr>(), trx));
+            if (fc::holds_alternative<fc::exception_ptr>(response)) {
+               _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(fc::get<fc::exception_ptr>(response), trx));
                if (_pending_block_mode == pending_block_mode::producing) {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Block ${block_num} for producer ${prod} is REJECTING tx: ${txid} : ${why} ",
                         ("block_num", chain.head_block_num() + 1)
                         ("prod", chain.pending_block_producer())
                         ("txid", trx->id())
-                        ("why",response.get<fc::exception_ptr>()->what()));
+                        ("why",fc::get<fc::exception_ptr>(response)->what()));
                } else {
                   fc_dlog(_trx_trace_log, "[TRX_TRACE] Speculative execution is REJECTING tx: ${txid} : ${why} ",
                           ("txid", trx->id())
-                          ("why",response.get<fc::exception_ptr>()->what()));
+                          ("why",fc::get<fc::exception_ptr>(response)->what()));
                }
             } else {
                _transaction_ack_channel.publish(priority::low, std::pair<fc::exception_ptr, transaction_metadata_ptr>(nullptr, trx));
@@ -1029,12 +1029,12 @@ producer_plugin::whitelist_blacklist producer_plugin::get_whitelist_blacklist() 
 
 void producer_plugin::set_whitelist_blacklist(const producer_plugin::whitelist_blacklist& params) {
    chain::controller& chain = my->chain_plug->chain();
-   if(params.actor_whitelist.valid()) chain.set_actor_whitelist(*params.actor_whitelist);
-   if(params.actor_blacklist.valid()) chain.set_actor_blacklist(*params.actor_blacklist);
-   if(params.contract_whitelist.valid()) chain.set_contract_whitelist(*params.contract_whitelist);
-   if(params.contract_blacklist.valid()) chain.set_contract_blacklist(*params.contract_blacklist);
-   if(params.action_blacklist.valid()) chain.set_action_blacklist(*params.action_blacklist);
-   if(params.key_blacklist.valid()) chain.set_key_blacklist(*params.key_blacklist);
+   if(params.actor_whitelist.has_value()) chain.set_actor_whitelist(*params.actor_whitelist);
+   if(params.actor_blacklist.has_value()) chain.set_actor_blacklist(*params.actor_blacklist);
+   if(params.contract_whitelist.has_value()) chain.set_contract_whitelist(*params.contract_whitelist);
+   if(params.contract_blacklist.has_value()) chain.set_contract_blacklist(*params.contract_blacklist);
+   if(params.action_blacklist.has_value()) chain.set_action_blacklist(*params.action_blacklist);
+   if(params.key_blacklist.has_value()) chain.set_key_blacklist(*params.key_blacklist);
 }
 
 producer_plugin::integrity_hash_information producer_plugin::get_integrity_hash() const {
@@ -1919,7 +1919,7 @@ optional<fc::time_point> producer_plugin_impl::calculate_producer_wake_up_time( 
          }
       }
    }
-   if( !wake_up_time ) {
+   if( !wake_up_time.has_value() ) {
       fc_dlog(_log, "Not Scheduling Speculative/Production, no local producers had valid wake up times");
    }
 

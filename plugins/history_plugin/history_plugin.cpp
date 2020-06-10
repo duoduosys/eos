@@ -278,11 +278,11 @@ namespace eosio {
          }
 
          void on_applied_transaction( const transaction_trace_ptr& trace ) {
-            if( !trace->receipt || (trace->receipt->status != transaction_receipt_header::executed &&
+            if( !trace->receipt.has_value() || (trace->receipt->status != transaction_receipt_header::executed &&
                   trace->receipt->status != transaction_receipt_header::soft_fail) )
                return;
             for( const auto& atrace : trace->action_traces ) {
-               if( !atrace.receipt ) continue;
+               if( !atrace.receipt.has_value() ) continue;
                on_action_trace( atrace );
             }
          }
@@ -468,7 +468,7 @@ namespace eosio {
 
          bool in_history = (itr != idx.end() && txn_id_matched(itr->trx_id) );
 
-         if( !in_history && !p.block_num_hint ) {
+         if( !in_history && !p.block_num_hint.has_value() ) {
             EOS_THROW(tx_not_found, "Transaction ${id} not found in history and no block hint was given", ("id",p.id));
          }
 
@@ -494,8 +494,8 @@ namespace eosio {
             if( blk || chain.is_building_block() ) {
                const auto& receipts = blk ? blk->transactions : chain.get_pending_trx_receipts();
                for (const auto &receipt: receipts) {
-                    if (receipt.trx.contains<packed_transaction>()) {
-                        auto &pt = receipt.trx.get<packed_transaction>();
+                    if (fc::holds_alternative<packed_transaction>(receipt.trx)) {
+                        auto &pt = fc::get<packed_transaction>(receipt.trx);
                         if (pt.id() == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             fc::variant v = chain.to_variant_with_abi(pt.get_transaction(), abi_serializer::create_yield_function( abi_serializer_max_time ));
@@ -509,7 +509,7 @@ namespace eosio {
                             break;
                         }
                     } else {
-                        auto &id = receipt.trx.get<transaction_id_type>();
+                        auto &id = fc::get<transaction_id_type>(receipt.trx);
                         if (id == result.id) {
                             fc::mutable_variant_object r("receipt", receipt);
                             result.trx = move(r);
@@ -523,8 +523,8 @@ namespace eosio {
             bool found = false;
             if (blk) {
                for (const auto& receipt: blk->transactions) {
-                  if (receipt.trx.contains<packed_transaction>()) {
-                     auto& pt = receipt.trx.get<packed_transaction>();
+                  if (fc::holds_alternative<packed_transaction>(receipt.trx)) {
+                     auto& pt = fc::get<packed_transaction>(receipt.trx);
                      const auto& id = pt.id();
                      if( txn_id_matched(id) ) {
                         result.id = id;
@@ -544,7 +544,7 @@ namespace eosio {
                         break;
                      }
                   } else {
-                     auto& id = receipt.trx.get<transaction_id_type>();
+                     auto& id = fc::get<transaction_id_type>(receipt.trx);
                      if( txn_id_matched(id) ) {
                         result.id = id;
                         result.last_irreversible_block = chain.last_irreversible_block_num();

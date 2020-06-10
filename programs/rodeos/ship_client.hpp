@@ -123,7 +123,7 @@ struct connection : std::enable_shared_from_this<connection> {
       auto                orig = bin;
       ship::result        result;
       from_bin(result, bin);
-      return callbacks && std::visit([&](auto& r) { return callbacks->received(r, orig); }, result);
+      return callbacks && visit([&](auto& r) { return callbacks->received(r, orig); }, result);
    }
 
    void request_blocks(uint32_t start_block_num, const std::vector<ship::block_position>& positions, int flags) {

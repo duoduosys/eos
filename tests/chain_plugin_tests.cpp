@@ -57,7 +57,7 @@ BOOST_FIXTURE_TEST_CASE( get_block_with_invalid_abi, TESTER ) try {
    };
 
    // abi should be resolved
-   BOOST_REQUIRE_EQUAL(true, resolver(N(asserter)).valid());
+   BOOST_REQUIRE_EQUAL(true, resolver(N(asserter)).has_value());
 
    // make an action using the valid contract & abi
    variant pretty_trx = mutable_variant_object()

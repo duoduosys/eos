@@ -139,8 +139,8 @@ public:
       if( empty() ) return;
       auto& idx = queue.get<by_trx_id>();
       for( const auto& receipt : bs->block->transactions ) {
-         if( receipt.trx.contains<packed_transaction>() ) {
-            const auto& pt = receipt.trx.get<packed_transaction>();
+         if( fc::holds_alternative<packed_transaction>(receipt.trx) ) {
+            const auto& pt = fc::get<packed_transaction>(receipt.trx);
             auto itr = idx.find( pt.id() );
             if( itr != idx.end() ) {
                if( itr->next ) {

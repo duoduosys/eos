@@ -41,8 +41,16 @@ namespace fc
    class time_point_sec;
    class microseconds;
    template<typename T> struct safe;
+
+   //#define STD_VARIANT
+   #ifdef STD_VARIANT
+   #include <variant>
+   template <typename... Types>
+   using static_variant = std::variant<Types...>;
+   #else
    template<typename... Types>
    class static_variant;
+   #endif
 
    struct blob { std::vector<char> data; };
 
@@ -351,7 +359,7 @@ namespace fc
         variant( const optional<T>& v )
         {
            memset( this, 0, sizeof(*this) );
-           if( v.valid() ) *this = variant(*v);
+           if( v.has_value() ) *this = variant(*v);
         }
 
         template<typename T>

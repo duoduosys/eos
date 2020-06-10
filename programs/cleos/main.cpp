@@ -494,7 +494,7 @@ void print_action( const fc::variant& at ) {
 
 bytes variant_to_bin( const account_name& account, const action_name& action, const fc::variant& action_args_var ) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis.has_value(), "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -503,7 +503,7 @@ bytes variant_to_bin( const account_name& account, const action_name& action, co
 
 fc::variant bin_to_variant( const account_name& account, const action_name& action, const bytes& action_args) {
    auto abis = abi_serializer_resolver( account );
-   FC_ASSERT( abis.valid(), "No ABI found for ${contract}", ("contract", account));
+   FC_ASSERT( abis.has_value(), "No ABI found for ${contract}", ("contract", account));
 
    auto action_type = abis->get_action_type( action );
    FC_ASSERT( !action_type.empty(), "Unknown action ${action} in contract ${contract}", ("action", action)( "contract", account ));
@@ -1398,7 +1398,8 @@ struct get_schedule_subcommand {
             auto a = row["authority"].as<block_signing_authority>();
             static_assert( std::is_same<decltype(a), static_variant<block_signing_authority_v0>>::value,
                            "Updates maybe needed if block_signing_authority changes" );
-            block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            // block_signing_authority_v0 auth = a.get<block_signing_authority_v0>();
+            block_signing_authority_v0 auth = fc::get<block_signing_authority_v0>(a);
             printf( "%s\n", fc::json::to_string( auth, fc::time_point::maximum() ).c_str() );
          }
       }
@@ -2185,7 +2186,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
       asset staked;
       asset unstaking;
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance.has_value() ) {
          unstaking = asset( 0, res.core_liquid_balance->get_symbol() ); // Correct core symbol for unstaking asset.
          staked = asset( 0, res.core_liquid_balance->get_symbol() );    // Correct core symbol for staked asset.
       }
@@ -2405,7 +2406,7 @@ void get_account( const string& accountName, const string& coresym, bool json_fo
          }
       }
 
-      if( res.core_liquid_balance.valid() ) {
+      if( res.core_liquid_balance.has_value() ) {
          std::cout << res.core_liquid_balance->get_symbol().name() << " balances: " << std::endl;
          std::cout << indent << std::left << std::setw(11)
                    << "liquid:" << std::right << std::setw(18) << *res.core_liquid_balance << std::endl;
@@ -2683,7 +2684,7 @@ int main( int argc, char** argv ) {
          } catch (...) {
             // error is handled in assertion below
          }
-         EOSC_ASSERT( block_num.valid() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
+         EOSC_ASSERT( block_num.has_value() && (*block_num > 0), "Invalid block num: ${block_num}", ("block_num", blockArg) );
          const auto arg = fc::variant_object("block_num", static_cast<uint32_t>(*block_num));
          std::cout << fc::json::to_pretty_string(call(get_block_info_func, arg)) << std::endl;
       } else {

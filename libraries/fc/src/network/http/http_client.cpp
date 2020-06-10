@@ -1,6 +1,7 @@
 #include <fc/network/http/http_client.hpp>
 #include <fc/io/json.hpp>
 #include <fc/scoped_exit.hpp>
+#include <fc/static_variant.hpp>
 
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
@@ -158,7 +159,7 @@ public:
    }
 
    host_key url_to_host_key( const url& dest ) {
-      FC_ASSERT(dest.host(), "Provided URL has no host");
+      FC_ASSERT(dest.host().has_value(), "Provided URL has no host");
       uint16_t port = 80;
       if (dest.port()) {
          port = *dest.port();
@@ -259,7 +260,8 @@ public:
    };
 
    bool check_closed( const connection_map::iterator& conn_itr ) {
-      if (conn_itr->second.visit(check_closed_visitor())) {
+      // if (conn_itr->second.visit(check_closed_visitor())) {
+      if (fc::visit(check_closed_visitor(), conn_itr->second)) {
          _connections.erase(conn_itr);
          return true;
       } else {
@@ -316,7 +318,7 @@ public:
    variant post_sync(const url& dest, const variant& payload, const fc::time_point& _deadline) {
       static const deadline_type epoch(boost::gregorian::date(1970, 1, 1));
       auto deadline = epoch + boost::posix_time::microseconds(_deadline.time_since_epoch().count());
-      FC_ASSERT(dest.host(), "No host set on URL");
+      FC_ASSERT(dest.host().has_value(), "No host set on URL");
 
       string path = dest.path() ? dest.path()->generic_string() : "/";
       if (dest.query()) {
@@ -346,7 +348,8 @@ public:
       });
 
       // Send the HTTP request to the remote host
-      error_code ec = conn_iter->second.visit(write_request_visitor(this, req, deadline));
+      // error_code ec = conn_iter->second.visit(write_request_visitor(this, req, deadline));
+      error_code ec = visit(write_request_visitor(this, req, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to send request: ${message}", ("message",ec.message()));
 
       // This buffer is used for reading and must be persisted
@@ -356,7 +359,8 @@ public:
       http::response<http::string_body> res;
 
       // Receive the HTTP response
-      ec = conn_iter->second.visit(read_response_visitor(this, buffer, res, deadline));
+      // ec = conn_iter->second.visit(read_response_visitor(this, buffer, res, deadline));
+      ec = fc::visit(read_response_visitor(this, buffer, res, deadline), conn_iter->second);
       FC_ASSERT(!ec, "Failed to read response: ${message}", ("message",ec.message()));
 
       // if the connection can be kept open, keep it open
