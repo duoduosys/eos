@@ -98,7 +98,7 @@ namespace fc { namespace crypto {
 
       if (pivot == std::string::npos) {
          // wif import
-         //#define STD_VARIANT
+         #define STD_VARIANT
          #ifdef STD_VARIANT
          using default_type = std::variant_alternative_t<0, private_key::storage_type>;
          #else
@@ -126,7 +126,7 @@ namespace fc { namespace crypto {
       auto which = _storage.index();
 
       if (which == 0) {
-         //#define STD_VARIANT
+         #define STD_VARIANT
          #ifdef STD_VARIANT
          using default_type = std::variant_alternative_t<0, private_key::storage_type>;
          #else
