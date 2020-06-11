@@ -2,7 +2,7 @@
 #include <fc/utility.hpp>
 #include <assert.h>
 
-//#define STD_OPTIONAL
+#define STD_OPTIONAL
 
 #ifdef STD_OPTIONAL
 #include <optional>
