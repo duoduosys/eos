@@ -15,7 +15,7 @@
 #include <fc/exception/exception.hpp>
 #include <boost/core/typeinfo.hpp>
 
-#define STD_VARIANT
+//#define STD_VARIANT
 
 #include <variant>
 

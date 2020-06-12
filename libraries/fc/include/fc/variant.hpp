@@ -42,7 +42,7 @@ namespace fc
    class microseconds;
    template<typename T> struct safe;
 
-   #define STD_VARIANT
+   //#define STD_VARIANT
    #ifdef STD_VARIANT
    #include <variant>
    template <typename... Types>

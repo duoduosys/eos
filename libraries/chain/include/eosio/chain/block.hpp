@@ -117,7 +117,7 @@ namespace eosio { namespace chain {
       transaction_receipt(transaction_receipt_v0&&, bool legacy);
       explicit transaction_receipt( const transaction_id_type& tid ):transaction_receipt_header(executed),trx(tid){}
 
-      #define STD_VARIANT
+      //#define STD_VARIANT
       #ifdef STD_VARIANT
       explicit transaction_receipt( const packed_transaction& ptrx ):transaction_receipt_header(executed),trx(std::in_place_type<packed_transaction>, ptrx){}
       #else
