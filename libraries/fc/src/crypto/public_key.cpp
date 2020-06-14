@@ -35,7 +35,7 @@ namespace fc { namespace crypto {
       constexpr auto legacy_prefix = config::public_key_legacy_prefix;
       if(prefix_matches(legacy_prefix, base58str) && base58str.find('_') == std::string::npos ) {
          auto sub_str = base58str.substr(const_strlen(legacy_prefix));
-         #define STD_VARIANT
+         //#define STD_VARIANT
          #ifdef STD_VARIANT
          using default_type = typename std::variant_alternative_t<0, public_key::storage_type>; //public_key::storage_type::template type_at<0>;
          #else

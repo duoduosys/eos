@@ -18,7 +18,7 @@ namespace fc {
    class variant_object;
    class path;
    
-   #define STD_VARIANT
+   //#define STD_VARIANT
    #ifdef STD_VARIANT
    #include <variant>
    template <typename... Types>
