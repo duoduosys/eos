@@ -5,7 +5,7 @@ set -eo pipefail
 # tests
 if [[ $(uname) == 'Darwin' ]]; then # macOS
     set +e # defer error handling to end
-    source ~/.bash_profile && ./"$@"
+    source ~/.bash_profile && rabbitmq-server -detached && ./"$@"
     EXIT_STATUS=$?
 else # Linux
     COMMANDS="rabbitmq-server -detached && $MOUNTED_DIR/$@"
